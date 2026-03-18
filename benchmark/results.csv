@@ -1,0 +1,2 @@
+dataset,pipeline,signal,iteration,f1,recall,precision,tn,fp,fn,tp,status,elapsed,split,run_id
+SMAP,multivariate_mistral_detector_jsonformat,E-2,0,0,0,0,,0,1,0,ERROR,14127.675318,True,1a5b924f-9

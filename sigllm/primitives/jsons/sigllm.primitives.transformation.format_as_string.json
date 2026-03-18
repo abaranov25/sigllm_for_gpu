@@ -1,0 +1,45 @@
+{
+    "name": "sigllm.primitives.transformation.format_as_string",
+    "contributors": [
+        "Sarah Alnegheimish <smish@mit.edu>",
+        "Linh Nguyen <linhnk@mit.edu>"
+    ],
+    "description": "Format X to string(s). Handles both normal time series (single string) and multiple windows (list of strings).",
+    "classifiers": {
+        "type": "preprocessor",
+        "subtype": "tranformer"
+    },
+    "modalities": [],
+    "primitive": "sigllm.primitives.transformation.format_as_string",
+    "produce": {
+        "args": [
+            {
+                "name": "X",
+                "type": "ndarray"
+            }
+        ],
+        "output": [
+            {
+                "name": "X",
+                "type": "ndarray"
+            }
+        ]
+    },
+    "hyperparameters": {
+        "fixed": {
+            "sep": {
+                "type": "string",
+                "default": ","
+            },
+            "space": {
+                "type": "bool",
+                "default": false
+            },
+            "single": {
+                "type": "bool",
+                "default": false
+            }
+        }
+    }
+}
+

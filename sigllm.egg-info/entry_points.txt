@@ -1,0 +1,3 @@
+[mlblocks]
+pipelines = sigllm:MLBLOCKS_PIPELINES
+primitives = sigllm:MLBLOCKS_PRIMITIVES

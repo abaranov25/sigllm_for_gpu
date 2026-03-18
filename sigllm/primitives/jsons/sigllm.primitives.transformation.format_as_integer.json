@@ -1,0 +1,45 @@
+{
+    "name": "sigllm.primitives.transformation.format_as_integer",
+    "contributors": [
+        "Sarah Alnegheimish <smish@mit.edu>",
+        "Linh Nguyen <linhnk@mit.edu>"
+    ],
+    "description": "Transform an ndarray of string values to an ndarray of integers.",
+    "classifiers": {
+        "type": "preprocessor",
+        "subtype": "transformer"
+    },
+    "modalities": [],
+    "primitive": "sigllm.primitives.transformation.format_as_integer",
+    "produce": {
+        "args": [
+            {
+                "name": "X",
+                "type": "ndarray"
+            }
+        ],
+        "output": [
+            {
+                "name": "X",
+                "type": "ndarray"
+            }
+        ]
+    },
+    "hyperparameters": {
+        "fixed": {
+            "sep": {
+                "type": "string",
+                "default": ","
+            },
+            "trunc": {
+                "type": "int",
+                "default": null
+            },
+            "errors": {
+                "type": "string",
+                "default": "ignore"
+            }
+        }
+    }
+}
+
