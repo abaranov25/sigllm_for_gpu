@@ -339,7 +339,7 @@ def benchmark(
 
     jobs = list()
     for dataset, signals in datasets.items():
-        if dataset not in ['MSL', 'SMAP']:
+        if dataset not in ['MSL']:
             continue
         for pipeline_name, pipeline in pipelines.items():
             hyperparameter = _get_pipeline_hyperparameter(hyperparameters, dataset, pipeline)

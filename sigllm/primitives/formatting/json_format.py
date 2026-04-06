@@ -49,6 +49,26 @@ class JSONFormat(MultivariateFormattingMethod):
                 dict mapping step -> np.array of target_column values at that step
         """
         print(f'now doing format_as_int: \nlength of X: {len(X)}')
+        print("now doing NEWEST format as integer")
+        
+        for idx in [1]:
+            print(f"\n===== INDEX {idx} =====")
+            print("raw:", X[idx])
+            print("repr(raw):", repr(X[idx]))
+            print("type(raw):", type(X[idx]))
+        
+            try:
+                print("len(raw):", len(X[idx]))
+            except Exception as e:
+                print("len(raw) failed:", e)
+        
+            try:
+                print("raw[0]:", X[idx][0])
+                print("repr(raw[0]):", repr(X[idx][0]))
+                print("type(raw[0]):", type(X[idx][0]))
+            except Exception as e:
+                print("raw[0] failed:", e)
+                
         if trunc is None:
             trunc = self.config.get('trunc')
         if steps_ahead is None and 'steps_ahead' in self.config:
@@ -99,6 +119,7 @@ class JSONFormat(MultivariateFormattingMethod):
             or (num_windows, num_samples, trunc) that hold values
             for the target column for each sample in each window.
         """
+        print("len of X is", len(X))
         if trunc is None:
             batch_rows = []
             for window in X:
@@ -106,6 +127,7 @@ class JSONFormat(MultivariateFormattingMethod):
                 for sample in window:
                     samples.append(self._extract_dim_values(sample, target_column))
                 batch_rows.append(samples)
+            print(np.array(batch_rows, dtype=object))
             return np.array(batch_rows, dtype=object)
 
         num_windows = len(X)

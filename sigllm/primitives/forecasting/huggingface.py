@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 import pickle
 import os
+import re
 
 import torch
 from tqdm import tqdm
@@ -73,7 +74,7 @@ class HF:
         self.samples = samples
         self.padding = padding
         self.multivariate_allowed_symbols = multivariate_allowed_symbols
-        
+
         cache_dir = cache_dir or os.getenv("SIGLLM_CACHE_DIR")
         self.cache_dir = Path(cache_dir) if cache_dir else None
         if self.cache_dir is not None:
@@ -118,41 +119,66 @@ class HF:
         self.model.eval()
         self.model.generation_config.pad_token_id = self.tokenizer.pad_token_id
 
+    def _delete_window_pkls(self):
+        if self.cache_dir is None:
+            return
+
+        for pkl_file in self.cache_dir.glob("window_*.pkl"):
+            try:
+                pkl_file.unlink()
+            except Exception as e:
+                print(f"failed to delete {pkl_file}: {e}")
+
     def forecast(self, X, **kwargs):
         """Use GPT to forecast a signal.
-
+    
         Args:
             X (ndarray):
                 Input sequences of strings containing signal values.
-
+    
         Returns:
-            list, list:
-                * List of forecasted signal values.
-                * Optionally, a list of dictionaries for raw output.
+            list:
+                List of forecasted signal values.
         """
         print("began forecasting stage")
         print("X shape:", len(X))
         
-        all_responses, all_probs = [], []
-        for i, text in enumerate(tqdm(X)):
-            cache_file = None
-            if self.cache_dir is not None:
-                cache_file = self.cache_dir / f"window_{i:06d}.pkl"
-                if cache_file.exists():
-                    with open(cache_file, "rb") as f:
-                        cached = pickle.load(f)
-                    all_responses.append(cached["responses"])
-                    print(f'found window {i}')
-                    print(f'loaded all_response: {all_responses}')
-                    continue
-            
-            print(f'did not find window, running sigllm for {self.samples} samples')
+        def is_empty_response(resp):
+            if resp is None:
+                return True
+        
+            # normalize to list
+            if isinstance(resp, str):
+                resp = [resp]
+        
+            if isinstance(resp, (list, tuple)):
+                if len(resp) == 0:
+                    return True
+        
+                for r in resp:
+                    if r is None:
+                        return True
+                    if not isinstance(r, str):
+                        return True
+                    if r.strip() == "":
+                        return True
+        
+                    # check for valid d0:<int>
+                    if not re.search(r'd0:(\d+)', r):
+                        return True
+        
+                return False
+        
+            return True
+    
+        def run_prediction_for_text(text):
+            print(f"running sigllm for {self.samples} samples")
             tokenized_input = self.tokenizer([text], return_tensors='pt').to('cuda')
-
+    
             input_length = tokenized_input['input_ids'].shape[1]
             average_length = input_length / len(text.split(self.sep))
-            max_tokens = (average_length + self.padding) * self.steps
-
+            max_tokens = int((average_length + self.padding) * self.steps)
+    
             generate_ids = self.model.generate(
                 **tokenized_input,
                 do_sample=True,
@@ -163,24 +189,94 @@ class HF:
                 renormalize_logits=True,
                 num_return_sequences=self.samples,
             )
-
+    
             responses = self.tokenizer.batch_decode(
                 generate_ids[:, input_length:],
                 skip_special_tokens=True,
                 clean_up_tokenization_spaces=False,
             )
-
+    
+            return responses
+    
+        combined_file = None
+        if self.cache_dir is not None:
+            combined_file = self.cache_dir / "all_responses.pkl"
+    
+            if combined_file.exists():
+                print(f"found combined cache: {combined_file}")
+                with open(combined_file, "rb") as f:
+                    cached = pickle.load(f)
+    
+                if isinstance(cached, dict):
+                    all_responses = cached["responses"]
+                else:
+                    all_responses = cached
+    
+                print("loaded combined responses:", len(all_responses))
+    
+                if len(all_responses) != len(X):
+                    raise ValueError(
+                        f"Combined cache length {len(all_responses)} does not match input length {len(X)}"
+                    )
+    
+                bad_indices = [i for i, resp in enumerate(all_responses) if is_empty_response(resp)]
+    
+                print("num bad cached responses:", len(bad_indices))
+                if bad_indices:
+                    print("bad indices (first 20):", bad_indices[:20])
+    
+                    for i in tqdm(bad_indices, desc="repairing empty cached responses"):
+                        print(f"rerunning window {i}")
+                        responses = run_prediction_for_text(X[i])
+                        print(f"new responses for window {i}: {responses}")
+                        all_responses[i] = responses
+    
+                    with open(combined_file, "wb") as f:
+                        pickle.dump({"responses": all_responses}, f)
+    
+                    print(f"patched and rewrote combined cache: {combined_file}")
+                else:
+                    print("no bad cached responses found")
+    
+                self._delete_window_pkls()
+                print("deleted all window cache files")
+                return all_responses
+    
+        all_responses = []
+    
+        for i, text in enumerate(tqdm(X)):
+            cache_file = None
+            if self.cache_dir is not None:
+                cache_file = self.cache_dir / f"window_{i:06d}.pkl"
+                if cache_file.exists():
+                    with open(cache_file, "rb") as f:
+                        cached = pickle.load(f)
+                    responses = cached["responses"] if isinstance(cached, dict) else cached
+                    all_responses.append(responses)
+                    print(f"found window {i}")
+                    print(f"found responses {responses}")
+                    continue
+    
+            print(f"did not find window {i}, running sigllm")
+            responses = run_prediction_for_text(text)
             all_responses.append(responses)
-            
-            print('responses: ', responses)
-            
-            generate_ids_cpu = generate_ids.detach().cpu()
-            if cache_file:
+    
+            print("responses:", responses)
+    
+            if cache_file is not None:
                 with open(cache_file, "wb") as f:
                     pickle.dump({"responses": responses}, f)
-            else:
-                print('cache file doesn\'t exist, why?')
-
+    
         print("done with predictions!")
         print("number of responses:", len(all_responses))
+    
+        if self.cache_dir is not None:
+            combined_file = self.cache_dir / "all_responses.pkl"
+            with open(combined_file, "wb") as f:
+                pickle.dump({"responses": all_responses}, f)
+            print(f"wrote combined cache: {combined_file}")
+    
+            self._delete_window_pkls()
+            print("deleted all window cache files")
+    
         return all_responses

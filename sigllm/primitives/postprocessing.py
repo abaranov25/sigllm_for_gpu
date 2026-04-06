@@ -64,4 +64,6 @@ def aggregate_rolling_window(y, step_size=1, agg='median', remove_outliers=False
 
         signal.append(method(np.asarray(intermediate)))
 
+    print('doing aggregate rolling window:')
+    print('shape of signal array is ', np.array(signal).shape)
     return np.array(signal)

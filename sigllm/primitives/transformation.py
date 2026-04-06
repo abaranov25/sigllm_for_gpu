@@ -5,6 +5,7 @@ import re
 
 import numpy as np
 
+print("LOADED transformation.py NEW VERSION")
 
 def format_as_string(X, sep=',', space=False, single=False):
     """Format X to a list of string.
@@ -86,7 +87,7 @@ def format_as_integer(X, sep=',', trunc=None, errors='ignore'):
     Handles empty strings by returning empty arrays.
 
     Args:
-        sep (str):
+        sep (str): 
             String to separate each element in values. Default to `','`.
         trunc (int):
             How many values to keep from the ndarray. Default to `None`,
@@ -103,6 +104,26 @@ def format_as_integer(X, sep=',', trunc=None, errors='ignore'):
         ndarray:
             An array of digits values. Empty arrays for empty strings.
     """
+    print("now doing NEWEST format as integer")
+    print("shape of X in here:", X.shape)
+    
+    for idx in [1333, 1335, 4385]:
+        print(f"\n===== INDEX {idx} =====")
+        print("raw:", X[idx])
+        print("repr(raw):", repr(X[idx]))
+        print("type(raw):", type(X[idx]))
+    
+        try:
+            print("len(raw):", len(X[idx]))
+        except Exception as e:
+            print("len(raw) failed:", e)
+    
+        try:
+            print("raw[0]:", X[idx][0])
+            print("repr(raw[0]):", repr(X[idx][0]))
+            print("type(raw[0]):", type(X[idx][0]))
+        except Exception as e:
+            print("raw[0] failed:", e)
     result = list()
     for string_list in X:
         sample = list()
@@ -185,6 +206,13 @@ class Scalar2Float:
 
     def transform(self, X, minimum=0, decimal=2):
         """Convert data from integer to float."""
+        print("now doing scalar2float")
+        print("X shape:", X.shape)
+        print("min, decimal:", minimum, decimal)
+        print("first value of X:", X[0])
+        print("dtype:", getattr(X, "dtype", None))
+        print("num none:", sum(v is None for v in X.flatten()))
+        print("sample bad idxs:", [i for i, v in enumerate(X.flatten()) if v is None][:20])
         values = X * 10 ** (-decimal)
 
         return values + minimum
